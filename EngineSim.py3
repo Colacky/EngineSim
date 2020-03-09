@@ -1,14 +1,27 @@
 from tkinter import *
 import random
+import time
 
 Started = False
 RPM = 0
 Idle = False
 Gear = N
-Speed = 0
+Speed = int(0)
 MaxRPM = 7500
 MaxSpeed = 200
-Power = 0
+Redline = False
+
+def Reset():
+    Started = False
+    RPM = 0
+    Idle = False
+    Gear = N
+    Redline = False
+    Speed = 0
+    lbl2['text'] = RPM
+    lbl8['text'] = Speed
+    lbl4['text'] = Gear
+    UpdateRPM()
 
 def StartEngine():
     global Started
@@ -18,39 +31,43 @@ def StartEngine():
     Idle = True
     RPM = 900
     print("Engine running")
-
-def ChangeGears():
-    global RPM
-    global Speed
-    global Gear
-    ShiftUp = False
-    
-    while RPM > 3000:
-        ShiftUp = True
-        print("Ready to shift gears.")
-        window.after(100,ChangeGears)
-    
-    while ShiftUp == True:
-        Gear += 1
-        lbl4['text'] = Gear
-        RPM -= 1500
-        lbl2['text'] = RPM
-        print("Gear shifted up")
-        ShiftUp = False
-        window.after(100,ChangeGears)    
-    
+     
 def UpdateRPM():
+    global RPM
+    global Gear
+    global Redline
+    
+    if RPM >= MaxRPM:
+        Redline = True
+        print("Redline reached, throttle disengaged.")
+        RPM = 7450
+        lbl2['text'] = RPM
+        window.after(1000,UpdateRPM)
+    else:
+        Redline = False
+        
     if Started == True and Idle == True:
         OffsetRPM = random.randint(-10,10)
         lbl2['text'] = RPM + OffsetRPM
-        window.after(500,UpdateRPM)
-    elif Started == True and Idle == False:
+        window.after(1000,UpdateRPM)
+    elif Started == True and Idle == False and RPM < 3000:
         OffsetRPM = random.randint(-10,10)
         lbl2['text'] = RPM + OffsetRPM
-        window.after(500,UpdateRPM)
+        window.after(1000,UpdateRPM)
+    elif Started == True and Idle == False and RPM > 3000:
+        OffsetRPM = random.randint(-10,10)
+        if Gear < 5:
+            Gear += 1
+            RPM -= 1500
+            lbl2['text'] = RPM + OffsetRPM
+            print("Gear shifted up.")
+            window.after(1000,UpdateRPM)
+        else:
+            lbl2['text'] = RPM + OffsetRPM            
+            window.after(1000,UpdateRPM)
     elif Started == False:
         lbl2['text'] = RPM
-        window.after(500,UpdateRPM)
+        window.after(1000,UpdateRPM)
     
 def StopEngine():
     global Started
@@ -61,49 +78,54 @@ def StopEngine():
     RPM = 0
     print("Engine stopped")
     
-def CalcPower():
-    global Power
-    global RPM
-    Power = int(RPM/54)
-    lbl6['text'] = Power
-    window.after(100,CalcPower)
  
 def Accelerate():
     global RPM
     global Gear
     global Idle
     global Speed
-    RPM += 100
-    Idle = False
-    if Speed == 0:
-        Speed = 1
-        Gear = 1
+    
+    if Redline == True:
+        "Redline reached, cannot accelerate further."
+        time.sleep(3)
     else:
-        pass
-    Speed = Speed*1.1
-    lbl8['text'] = Speed
-    lbl4['text'] = Gear
-    print("Increased speed.")
+        RPM += 200
+        Idle = False
+        if Speed == 0:
+            Speed = 1
+            Gear = 1
+        else:
+            pass
+        Speed += 5
+        lbl8['text'] = int(Speed)
+        lbl4['text'] = Gear
+        
     
 def Deccelerate():
     global RPM
     global Gear
     global Idle
     global Speed
-    if RPM > 900:
+    
+    if RPM > 900 and RPM < 1400 and Gear > 1:
+        RPM += 1000
+        Speed = Speed*(0.6)
+        Gear -= 1
+        lbl4['text'] = Gear
+        lbl8['text'] = int(Speed)
+        window.after(2000,Deccelerate)
+    elif RPM > 900:
         RPM -= 100
-        Speed = Speed/(0.6)
-        lbl8['text'] = Speed
-        print("Decreased speed.")
-        window.after(1500,Deccelerate)
+        Speed = Speed*(0.6)
+        lbl8['text'] = int(Speed)
+        window.after(2000,Deccelerate)
     else:
         Idle = True
         Speed = 0
         Gear = N
-        lbl8['text'] = Speed
+        lbl8['text'] = int(Speed)
         lbl4['text'] = Gear
-        print("Stopped.")
-        window.after(1500,Deccelerate)
+        window.after(2000,Deccelerate)
 
 
 window = Tk()
@@ -117,10 +139,6 @@ lbl3 = Label(window,text = "Gear:")
 lbl3.grid(column=0,row=1)
 lbl4 = Label(window,text = Gear)
 lbl4.grid(column=1,row=1)
-lbl5 = Label(window,text = "Power:")
-lbl5.grid(column=0,row=2)
-lbl6 = Label(window,text = Power)
-lbl6.grid(column=1,row=2)
 lbl7 = Label(window,text = "Speed:")
 lbl7.grid(column=0,row=3)
 lbl8 = Label(window,text = int(Speed))
@@ -138,8 +156,11 @@ btn3.grid(column=2,row=1)
 btn4 = Button(window,text="Deccelerate",command=Deccelerate)
 btn4.grid(column=3,row=1)
 
-ChangeGears()
-CalcPower()
+btn5 = Button(window,text="Reset",command=Reset)
+btn5.grid(column=3,row=3)
+
+
+
 UpdateRPM()
 Deccelerate()
 window.mainloop()
